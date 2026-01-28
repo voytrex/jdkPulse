@@ -3,8 +3,33 @@ name = "jdk-pulse"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+name = "jdk_pulse"
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "jdk-pulse"
+path = "src/main.rs"
+
+[[bin]]
+name = "jdk-pulse-tauri"
+path = "src/tauri_main.rs"
+required-features = ["tauri"]
+
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 dirs = "5"
+
+[features]
+default = []
+tauri = ["dep:tauri"]
+
+[dependencies.tauri]
+version = "2.0"
+features = ["macos-private-api"]
+optional = true
+
+[build-dependencies]
+tauri-build = { version = "2.0", features = [] }
 
