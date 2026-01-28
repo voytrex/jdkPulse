@@ -2,9 +2,25 @@
 
 #[cfg(feature = "tauri")]
 fn main() {
-    use jdk_pulse::tauri_commands::{get_active_jdk_command, list_jdks_command, set_active_jdk_command};
+    use jdk_pulse::{get_active_jdk, list_jdks, set_active_jdk, JdkInfo};
     use jdk_pulse::tauri_tray::create_system_tray;
     use tauri::Manager;
+
+    // Define Tauri commands directly in the binary crate
+    #[tauri::command]
+    async fn list_jdks_command() -> Result<Vec<JdkInfo>, String> {
+        list_jdks()
+    }
+
+    #[tauri::command]
+    async fn get_active_jdk_command() -> Result<Option<JdkInfo>, String> {
+        get_active_jdk()
+    }
+
+    #[tauri::command]
+    async fn set_active_jdk_command(id: String) -> Result<String, String> {
+        set_active_jdk(&id)
+    }
 
     tauri::Builder::default()
         .setup(|app| {
