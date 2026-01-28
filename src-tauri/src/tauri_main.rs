@@ -3,11 +3,14 @@
 #[cfg(feature = "tauri")]
 fn main() {
     use jdk_pulse::tauri_commands::{get_active_jdk_command, list_jdks_command, set_active_jdk_command};
-    use jdk_pulse::tauri_tray::{create_system_tray, handle_tray_event};
+    use jdk_pulse::tauri_tray::create_system_tray;
 
     tauri::Builder::default()
-        .system_tray(create_system_tray())
-        .on_system_tray_event(handle_tray_event)
+        .setup(|app| {
+            // Create system tray
+            create_system_tray(app.handle())?;
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             list_jdks_command,
             get_active_jdk_command,
