@@ -4,6 +4,7 @@
 fn main() {
     use jdk_pulse::tauri_commands::{get_active_jdk_command, list_jdks_command, set_active_jdk_command};
     use jdk_pulse::tauri_tray::create_system_tray;
+    use tauri::Manager;
 
     tauri::Builder::default()
         .setup(|app| {

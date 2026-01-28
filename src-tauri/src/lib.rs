@@ -217,6 +217,8 @@ fn get_state_file_path() -> PathBuf {
 // Tauri commands
 #[cfg(feature = "tauri")]
 pub mod tauri_commands {
+    // Re-export commands for easier access
+    pub use super::{get_active_jdk, list_jdks, set_active_jdk, JdkInfo};
     use super::{get_active_jdk, list_jdks, set_active_jdk, JdkInfo};
 
     #[tauri::command]
