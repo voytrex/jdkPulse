@@ -237,9 +237,9 @@ pub mod tauri_commands {
 
 #[cfg(feature = "tauri")]
 pub mod tauri_tray {
-    use super::{get_active_jdk, list_jdks, set_active_jdk, JdkInfo};
-    use tauri::{AppHandle, Manager};
-    use tauri::menu::{Menu, MenuBuilder, MenuItem};
+    use super::{get_active_jdk, list_jdks, set_active_jdk};
+    use tauri::AppHandle;
+    use tauri::menu::MenuBuilder;
     use tauri::tray::{TrayIconBuilder, TrayIcon};
 
     pub fn create_system_tray(app: &AppHandle) -> Result<TrayIcon, Box<dyn std::error::Error>> {
@@ -247,7 +247,7 @@ pub mod tauri_tray {
         
         let tray = TrayIconBuilder::new()
             .menu(&menu)
-            .menu_on_left_click(true)
+            .show_menu_on_left_click(true)
             .on_menu_event(|app, event| {
                 match event.id.as_ref() {
                     "quit" => {
@@ -274,7 +274,7 @@ pub mod tauri_tray {
         Ok(tray)
     }
 
-    fn create_tray_menu(app: &AppHandle) -> Result<Menu, Box<dyn std::error::Error>> {
+    fn create_tray_menu(app: &AppHandle) -> Result<tauri::menu::Menu<tauri::Runtime>, Box<dyn std::error::Error>> {
         let mut builder = MenuBuilder::new(app);
 
         match (list_jdks(), get_active_jdk()) {
@@ -317,18 +317,15 @@ pub mod tauri_tray {
     }
 
     fn update_tray_menu(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
-        // Get the tray icon handle - in Tauri v2, we need to store the tray handle
-        // For now, we'll recreate the tray. In a production app, you'd store the handle.
-        // This is a limitation - we'll need to refactor to store the tray handle.
+        // Get the tray handle from app state
         let menu = create_tray_menu(app)?;
         
-        // Note: In Tauri v2, updating the menu requires access to the TrayIcon handle
-        // which we don't have stored. For now, we'll just log the update.
-        // A better approach would be to store the tray handle in app state.
-        println!("Tray menu updated (menu recreation needed for full update)");
+        // Try to get the tray from state and update it
+        if let Ok(tray) = app.try_state::<TrayIcon>() {
+            let tray = tray.inner();
+            tray.set_menu(&menu)?;
 
-        // Update tooltip if we can get the tray handle
-        if let Some(tray) = app.tray_handle(None) {
+            // Update tooltip with active JDK version
             match get_active_jdk() {
                 Ok(Some(jdk)) => {
                     let tooltip = format!("JDK-Pulse – Java {}", jdk.version_major);
@@ -341,6 +338,9 @@ pub mod tauri_tray {
                     eprintln!("Error getting active JDK: {e}");
                 }
             }
+        } else {
+            // If we can't get the tray from state, the menu will be updated on next creation
+            println!("Tray handle not found in app state - menu will update on next interaction");
         }
         Ok(())
     }

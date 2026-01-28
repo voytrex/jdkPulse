@@ -7,8 +7,9 @@ fn main() {
 
     tauri::Builder::default()
         .setup(|app| {
-            // Create system tray
-            create_system_tray(app.handle())?;
+            // Create system tray and store it in app state
+            let tray = create_system_tray(app.handle())?;
+            app.manage(tray);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
