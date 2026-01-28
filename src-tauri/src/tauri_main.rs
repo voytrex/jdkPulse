@@ -14,9 +14,9 @@ fn main() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            jdk_pulse::tauri_commands::list_jdks_command,
-            jdk_pulse::tauri_commands::get_active_jdk_command,
-            jdk_pulse::tauri_commands::set_active_jdk_command
+            list_jdks_command,
+            get_active_jdk_command,
+            set_active_jdk_command
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
