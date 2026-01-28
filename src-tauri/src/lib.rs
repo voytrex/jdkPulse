@@ -13,7 +13,6 @@ pub struct JdkInfo {
     pub vendor: Option<String>,
 }
 
-pub fn list_jdks() -> Result<Vec<JdkInfo>, String> {
 #[cfg(target_os = "macos")]
 pub fn list_jdks() -> Result<Vec<JdkInfo>, String> {
     let mut all = Vec::new();
