@@ -323,7 +323,7 @@ pub mod tauri_tray {
         // Try to get the tray from state and update it
         if let Some(tray_state) = app.try_state::<TrayIcon<R>>() {
             let tray = tray_state.inner();
-            tray.set_menu(Some(&menu))?;
+            tray.set_menu(Some(menu))?;
 
             // Update tooltip with active JDK version
             match get_active_jdk() {
