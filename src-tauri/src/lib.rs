@@ -15,7 +15,15 @@ pub struct JdkInfo {
 
 #[cfg(target_os = "macos")]
 pub fn list_jdks() -> Result<Vec<JdkInfo>, String> {
-    list_jdks_macos()
+    let mut all = Vec::new();
+
+    // System JDKs from java_home
+    all.extend(list_system_jdks_macos()?);
+
+    // jenv-managed JDKs (if any)
+    all.extend(list_jenv_jdks()?);
+
+    Ok(all)
 }
 
 #[cfg(not(target_os = "macos"))]
@@ -24,7 +32,7 @@ pub fn list_jdks() -> Result<Vec<JdkInfo>, String> {
 }
 
 #[cfg(target_os = "macos")]
-fn list_jdks_macos() -> Result<Vec<JdkInfo>, String> {
+fn list_system_jdks_macos() -> Result<Vec<JdkInfo>, String> {
     let output = Command::new("/usr/libexec/java_home")
         .arg("-V")
         .output()
@@ -75,6 +83,69 @@ fn list_jdks_macos() -> Result<Vec<JdkInfo>, String> {
     }
 
     Ok(jdks)
+}
+
+/// Discover JDKs managed by jenv under ~/.jenv/versions
+#[cfg(target_os = "macos")]
+fn list_jenv_jdks() -> Result<Vec<JdkInfo>, String> {
+    let mut result = Vec::new();
+
+    let home = dirs::home_dir().ok_or("Could not determine home directory")?;
+    let versions_dir = home.join(".jenv").join("versions");
+    if !versions_dir.is_dir() {
+        return Ok(result);
+    }
+
+    let entries = std::fs::read_dir(&versions_dir)
+        .map_err(|e| format!("Failed to read jenv versions dir {}: {e}", versions_dir.display()))?;
+
+    for entry in entries {
+        let entry = match entry {
+            Ok(e) => e,
+            Err(_) => continue,
+        };
+        let path = entry.path();
+        if !path.is_dir() {
+            continue;
+        }
+
+        // jenv version name is the directory name, e.g. "21.0.10" or "openjdk64-21.0.10"
+        let version_name = match path.file_name().and_then(|s| s.to_str()) {
+            Some(name) => name.to_string(),
+            None => continue,
+        };
+
+        // Heuristic: use version_name as version_full, extract major version
+        let version_full = version_name.clone();
+        let version_major = parse_major_version(&version_full);
+
+        // Determine JAVA_HOME:
+        // - If there's a "Contents/Home" subdir (mac-style JDK), use that
+        // - Else, use the version dir itself
+        let contents_home = path.join("Contents").join("Home");
+        let home_path = if contents_home.is_dir() {
+            contents_home
+        } else {
+            path.clone()
+        };
+
+        // Require bin/java to exist
+        if !home_path.join("bin").join("java").exists() {
+            continue;
+        }
+
+        let id = format!("jenv-{}", version_name.replace('.', "_"));
+
+        result.push(JdkInfo {
+            id,
+            version_major,
+            version_full,
+            home: home_path.to_string_lossy().to_string(),
+            vendor: Some("jenv".to_string()),
+        });
+    }
+
+    Ok(result)
 }
 
 fn parse_major_version(version_full: &str) -> u32 {
@@ -288,11 +359,19 @@ pub mod tauri_tray {
         match (list_jdks(), get_active_jdk()) {
             (Ok(jdks), Ok(active_jdk)) => {
                 // Add JDK selection items
+                // First, a synthetic "Use jenv default" entry if applicable
+                if jenv_default_exists() {
+                    builder = builder.text("jenv-default", "Use jenv default");
+                    builder = builder.separator();
+                }
+
                 for jdk in jdks {
-                    let label = if let Some(vendor) = &jdk.vendor {
-                        format!("Java {} ({})", jdk.version_major, vendor)
-                    } else {
-                        format!("Java {}", jdk.version_major)
+                    let label = match &jdk.vendor {
+                        Some(vendor) if vendor == "jenv" => {
+                            format!("{} (jenv)", jdk.version_full)
+                        }
+                        Some(vendor) => format!("Java {} ({})", jdk.version_major, vendor),
+                        None => format!("Java {}", jdk.version_major),
                     };
 
                     let is_active = active_jdk
@@ -351,5 +430,15 @@ pub mod tauri_tray {
             println!("Tray handle not found in app state - menu will update on next interaction");
         }
         Ok(())
+    }
+
+    /// Check if a jenv default version is configured (~/.jenv/version exists)
+    fn jenv_default_exists() -> bool {
+        if let Some(home) = dirs::home_dir() {
+            let default_file = home.join(".jenv").join("version");
+            default_file.is_file()
+        } else {
+            false
+        }
     }
 }
