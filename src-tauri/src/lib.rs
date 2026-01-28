@@ -238,17 +238,17 @@ pub mod tauri_commands {
 #[cfg(feature = "tauri")]
 pub mod tauri_tray {
     use super::{get_active_jdk, list_jdks, set_active_jdk};
-    use tauri::AppHandle;
+    use tauri::{AppHandle, Manager};
     use tauri::menu::MenuBuilder;
     use tauri::tray::{TrayIconBuilder, TrayIcon};
 
-    pub fn create_system_tray(app: &AppHandle) -> Result<TrayIcon, Box<dyn std::error::Error>> {
+    pub fn create_system_tray<R: tauri::Runtime>(app: &AppHandle<R>) -> Result<TrayIcon<R>, Box<dyn std::error::Error>> {
         let menu = create_tray_menu(app)?;
         
         let tray = TrayIconBuilder::new()
             .menu(&menu)
             .show_menu_on_left_click(true)
-            .on_menu_event(|app, event| {
+            .on_menu_event(|app: &AppHandle<R>, event| {
                 match event.id.as_ref() {
                     "quit" => {
                         app.exit(0);
@@ -274,7 +274,7 @@ pub mod tauri_tray {
         Ok(tray)
     }
 
-    fn create_tray_menu(app: &AppHandle) -> Result<tauri::menu::Menu<tauri::Runtime>, Box<dyn std::error::Error>> {
+    fn create_tray_menu<R: tauri::Runtime>(app: &AppHandle<R>) -> Result<tauri::menu::Menu<R>, Box<dyn std::error::Error>> {
         let mut builder = MenuBuilder::new(app);
 
         match (list_jdks(), get_active_jdk()) {
@@ -316,13 +316,13 @@ pub mod tauri_tray {
             .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
     }
 
-    fn update_tray_menu(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
+    fn update_tray_menu<R: tauri::Runtime>(app: &AppHandle<R>) -> Result<(), Box<dyn std::error::Error>> {
         // Get the tray handle from app state
         let menu = create_tray_menu(app)?;
         
         // Try to get the tray from state and update it
-        if let Ok(tray) = app.try_state::<TrayIcon>() {
-            let tray = tray.inner();
+        if let Ok(tray_state) = app.try_state::<TrayIcon<R>>() {
+            let tray = tray_state.inner();
             tray.set_menu(&menu)?;
 
             // Update tooltip with active JDK version
