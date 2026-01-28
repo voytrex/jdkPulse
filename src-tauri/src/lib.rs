@@ -245,7 +245,15 @@ pub mod tauri_tray {
     pub fn create_system_tray<R: tauri::Runtime>(app: &AppHandle<R>) -> Result<TrayIcon<R>, Box<dyn std::error::Error>> {
         let menu = create_tray_menu(app)?;
         
-        let tray = TrayIconBuilder::new()
+        // Use default window icon if available, otherwise create without icon
+        let mut builder = TrayIconBuilder::new();
+        
+        // Try to use the default window icon
+        if let Some(default_icon) = app.default_window_icon() {
+            builder = builder.icon(default_icon.clone());
+        }
+        
+        let tray = builder
             .menu(&menu)
             .show_menu_on_left_click(true)
             .on_menu_event(|app: &AppHandle<R>, event| {
