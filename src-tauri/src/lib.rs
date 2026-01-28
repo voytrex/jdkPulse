@@ -13,6 +13,7 @@ pub struct JdkInfo {
     pub vendor: Option<String>,
 }
 
+pub fn list_jdks() -> Result<Vec<JdkInfo>, String> {
 #[cfg(target_os = "macos")]
 pub fn list_jdks() -> Result<Vec<JdkInfo>, String> {
     let mut all = Vec::new();
@@ -146,6 +147,44 @@ fn list_jenv_jdks() -> Result<Vec<JdkInfo>, String> {
     }
 
     Ok(result)
+}
+
+/// Set the active JDK to the `jenv` default (if configured).
+#[cfg(target_os = "macos")]
+fn set_jenv_default_active() -> Result<String, String> {
+    let home = dirs::home_dir().ok_or("Could not determine home directory".to_string())?;
+    let version_file = home.join(".jenv").join("version");
+    let version_name = std::fs::read_to_string(&version_file)
+        .map_err(|e| format!("Failed to read jenv default version {}: {e}", version_file.display()))?;
+    let version_name = version_name.trim();
+    if version_name.is_empty() {
+        return Err("jenv default version file is empty".to_string());
+    }
+
+    let versions_dir = home.join(".jenv").join("versions");
+    let version_dir = versions_dir.join(version_name);
+    if !version_dir.exists() {
+        return Err(format!(
+            "jenv version '{}' not found under {}",
+            version_name,
+            versions_dir.display()
+        ));
+    }
+
+    let contents_home = version_dir.join("Contents").join("Home");
+    let home_path = if contents_home.is_dir() {
+        contents_home
+    } else {
+        version_dir
+    };
+
+    let home_str = home_path.to_string_lossy().to_string();
+    set_active_jdk(&home_str)
+}
+
+#[cfg(not(target_os = "macos"))]
+fn set_jenv_default_active() -> Result<String, String> {
+    Err("jenv default selection is only supported on macOS".to_string())
 }
 
 fn parse_major_version(version_full: &str) -> u32 {
@@ -331,6 +370,19 @@ pub mod tauri_tray {
                 match event.id.as_ref() {
                     "quit" => {
                         app.exit(0);
+                    }
+                    "jenv-default" => {
+                        match super::set_jenv_default_active() {
+                            Ok(home) => {
+                                println!("Active JDK set to jenv default: {}", home);
+                                if let Err(e) = update_tray_menu(app) {
+                                    eprintln!("Error updating tray menu: {e}");
+                                }
+                            }
+                            Err(e) => {
+                                eprintln!("Error setting jenv default JDK: {e}");
+                            }
+                        }
                     }
                     id => {
                         // It's a JDK selection
