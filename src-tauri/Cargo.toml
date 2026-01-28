@@ -9,10 +9,6 @@ crate-type = ["cdylib", "rlib"]
 
 [[bin]]
 name = "jdk-pulse"
-path = "src/main.rs"
-
-[[bin]]
-name = "jdk-pulse-tauri"
 path = "src/tauri_main.rs"
 required-features = ["tauri"]
 
