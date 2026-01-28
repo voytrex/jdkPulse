@@ -321,7 +321,7 @@ pub mod tauri_tray {
         let menu = create_tray_menu(app)?;
         
         // Try to get the tray from state and update it
-        if let Ok(tray_state) = app.try_state::<TrayIcon<R>>() {
+        if let Some(tray_state) = app.try_state::<TrayIcon<R>>() {
             let tray = tray_state.inner();
             tray.set_menu(&menu)?;
 
