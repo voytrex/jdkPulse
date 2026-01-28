@@ -1,7 +1,7 @@
 {
   "productName": "JDK-Pulse",
   "version": "0.1.0",
-  "identifier": "com.jdkpulse.app",
+  "identifier": "com.jdkpulse",
   "build": {
     "beforeDevCommand": "",
     "beforeBuildCommand": "",

@@ -27,7 +27,7 @@ tauri = ["dep:tauri"]
 
 [dependencies.tauri]
 version = "2.0"
-features = ["macos-private-api"]
+features = []
 optional = true
 
 [build-dependencies]
