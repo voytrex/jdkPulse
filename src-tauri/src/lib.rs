@@ -323,16 +323,16 @@ pub mod tauri_tray {
         // Try to get the tray from state and update it
         if let Some(tray_state) = app.try_state::<TrayIcon<R>>() {
             let tray = tray_state.inner();
-            tray.set_menu(&menu)?;
+            tray.set_menu(Some(&menu))?;
 
             // Update tooltip with active JDK version
             match get_active_jdk() {
                 Ok(Some(jdk)) => {
                     let tooltip = format!("JDK-Pulse – Java {}", jdk.version_major);
-                    tray.set_tooltip(&tooltip)?;
+                    tray.set_tooltip(Some(&tooltip))?;
                 }
                 Ok(None) => {
-                    tray.set_tooltip("JDK-Pulse – No JDK selected")?;
+                    tray.set_tooltip(Some("JDK-Pulse – No JDK selected"))?;
                 }
                 Err(e) => {
                     eprintln!("Error getting active JDK: {e}");
